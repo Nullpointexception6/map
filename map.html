@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="zh" xmlns:th="http://www.thymeleaf.org">
+<head>
+	<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+	<meta name="viewport" content="initial-scale=1.0, user-scalable=no" />
+	<style type="text/css">
+		body, html {width: 100%;height: 100%;margin:0;font-family:"微软雅黑";}
+		#allmap{width:100%;height:500px;}
+		#r-result{width:100%;height:20%;line-height: 300px;font-size: 20px}
+		p{margin-left:5px; font-size:14px;}
+		dl,dt,dd,ul,li{
+			margin:0;
+			padding:0;
+			list-style:none;
+		}
+		p{font-size:12px;}
+		dt{
+			font-size:14px;
+			font-family:"微软雅黑";
+			font-weight:bold;
+			border-bottom:1px dotted #000;
+			padding:5px 0 5px 5px;
+			margin:5px 0;
+		}
+		dd{
+			padding:5px 0 0 5px;
+		}
+		li{
+			line-height:28px;
+		}
+
+	</style>
+	<script type="text/javascript" src="http://api.map.baidu.com/api?v=2.0&ak=密钥"></script>
+	<script type="text/javascript" src="http://api.map.baidu.com/library/SearchInRectangle/1.2/src/searchInRectangle_min.js"></script>
+	<!--加载鼠标绘制工具-->
+	<script type="text/javascript" src="http://api.map.baidu.com/library/DrawingManager/1.4/src/DrawingManager_min.js"></script>
+	<link rel="stylesheet" href="http://api.map.baidu.com/library/DrawingManager/1.4/src/DrawingManager_min.css" />
+	<!--加载检索信息窗口-->
+	<script type="text/javascript" src="http://api.map.baidu.com/library/SearchInfoWindow/1.4/src/SearchInfoWindow_min.js"></script>
+	<link rel="stylesheet" href="http://api.map.baidu.com/library/SearchInfoWindow/1.4/src/SearchInfoWindow_min.css" />
+	<!--鼠标测距-->
+	<script type="text/javascript" src="http://api.map.baidu.com/library/DistanceTool/1.2/src/DistanceTool_min.js"></script>
+	<title>八点半地图</title>
+</head>
+<body>
+<div id="allmap"></div>
+
+<div>
+	<input type="button" onclick="myDrag.open();" value="开启拉框" />
+	<input type="button" onclick="myDrag.close();" value="关闭拉框" />
+	<input type="button" onclick="myDis.open();" value="开启测距" />
+	<input type="button"  onclick="clearAll()" value="清除所有绘制"/>
+	<input type="button" onclick="icon.setImageUrl('http://api.map.baidu.com/images/markers.png');" value="图1" />
+	<input type="button" onclick="icon.setImageUrl('http://map.baidu.com/image/us_mk_icon.png');" value="图2" />
+</div>
+<div id="r-result" >
+
+</div>
+
+
+</body>
+</html>
+<script type="text/javascript">
+
+    var map = new BMap.Map("allmap");            // 创建Map实例
+    map.centerAndZoom(new BMap.Point(87.517796,43.859691), 11);
+
+    var icon = new BMap.Icon(
+        //"./1.png",
+        "http://map.baidu.com/image/us_mk_icon.png",
+        //标注区域大小
+        new BMap.Size(22, 22)
+	);
+    //关于鼠标绘制
+    var overlays = [];
+    var overlaycomplete = function(e){
+        overlays.push(e.overlay);
+    };
+    var styleOptions = {
+        strokeColor:"red",    //边线颜色。
+        fillColor:"white",      //填充颜色。当参数为空时，圆形将没有填充效果。
+        strokeWeight: 2,       //边线的宽度，以像素为单位。
+        strokeOpacity: 0.7,	   //边线透明度，取值范围0 - 1。
+        fillOpacity: 0.1,      //填充的透明度，取值范围0 - 1。
+        strokeStyle: 'dashed' //边线的样式，solid或dashed。
+    }
+    //实例化鼠标绘制工具
+    var drawingManager = new BMapLib.DrawingManager(map, {
+        isOpen: false, //是否开启绘制模式
+        enableDrawingTool: true, //是否显示工具栏
+        drawingToolOptions: {
+            anchor: BMAP_ANCHOR_TOP_RIGHT, //位置
+            offset: new BMap.Size(100, 5), //偏离
+        },
+        markerOptions:{icon:icon},
+        circleOptions: styleOptions, //圆的样式
+        polylineOptions: styleOptions, //线的样式
+        polygonOptions: styleOptions, //多边形的样式
+        rectangleOptions: styleOptions //矩形的样式
+    });
+    //添加鼠标绘制工具监听事件，用于获取绘制结果
+    drawingManager.addEventListener('overlaycomplete', overlaycomplete);
+    function clearAll() {
+        for(var i = 0; i < overlays.length; i++){
+            map.removeOverlay(overlays[i]);
+        }
+        overlays.length = 0
+    }
+    //鼠标测距
+    var myDis = new BMapLib.DistanceTool(map);
+    map.addEventListener("load",function(){
+    });
+    //左上角添加比例尺
+    var top_left_control = new BMap.ScaleControl({anchor: BMAP_ANCHOR_TOP_LEFT});
+    //添加带有定位的导航控件
+    var navigationControl = new BMap.NavigationControl({
+        // 靠左上角位置
+        anchor: BMAP_ANCHOR_TOP_LEFT,
+        // LARGE类型
+        type: BMAP_NAVIGATION_CONTROL_LARGE,
+        // 启用显示定位
+        enableGeolocation: true
+    });
+    map.addControl(navigationControl);
+    //地图、卫星、混合模式切换
+    map.addControl(new BMap.MapTypeControl({mapTypes: [BMAP_NORMAL_MAP, BMAP_SATELLITE_MAP, BMAP_HYBRID_MAP]}));
+    // 添加定位控件
+    var geolocationControl = new BMap.GeolocationControl();
+    //添加控件和比例尺
+    map.addControl(top_left_control);
+
+    geolocationControl.addEventListener("locationSuccess", function(e){
+        // 定位成功事件
+        var address = '';
+        address += e.addressComponent.province;
+        address += e.addressComponent.city;
+        address += e.addressComponent.district;
+        address += e.addressComponent.street;
+        address += e.addressComponent.streetNumber;
+        alert("当前定位地址为：" + address);
+    });
+    geolocationControl.addEventListener("locationError",function(e){
+        // 定位失败事件
+        alert(e.message);
+    });
+    map.addControl(geolocationControl);
+    //启用滚轮放大缩小
+    map.enableScrollWheelZoom();
+    //双击放大
+    map.enableDoubleClickZoom();
+    //加载颜色
+    madeBoundary();
+    function madeBoundary() {
+        var datas = new Array("新市区-#e4ff02","沙依巴克区-#a6fa68","天山区-#f639a8","水磨沟区-#20b832","头屯河区-#f4e53c","达坂城区-#8e770a","米东区-#5fd5b5");
+        var bdary = new BMap.Boundary();
+        for(var i=0;i<datas.length;i++){
+            getBoundary(datas[i],bdary);
+        }
+    }
+    //区域限制
+    function getBoundary(data,bdary){
+        data = data.split("-");
+        bdary.get(data[0], function(rs){       //获取行政区域
+            /*map.clearOverlays();       //清除地图覆盖物*/
+            var count = rs.boundaries.length; //行政区域的点有多少个
+
+            if (count === 0) {
+                alert('未能获取当前输入行政区域');
+                return ;
+            }
+            for (var i = 0; i < count; i++) {
+                /*var ply = new BMap.Polygon(rs.boundaries[i], {strokeWeight: 1, strokeColor: "#ff0000",fillOpacity:0.5,fillColor:data[1]}); //建立多边形覆盖物
+                map.addOverlay(ply);  //添加覆盖物*/
+                var ply = new BMap.Polygon(rs.boundaries[i], {strokeWeight: 2, strokeColor: "#ff0000",fillOpacity:0.08,fillColor:data[1]}); //建立多边形覆盖物
+                map.addOverlay(ply);  //添加覆盖物
+            }
+
+        });
+    }
+
+    var myDrag = new BMapLib.SearchInRectangle(map,"搜索的地点",{
+        renderOptions: {map: map, autoClose : false,panel: "r-result",selectFirstResult:"r-result"},
+        onSearchComplete:function fun(results){
+            console.log(results);
+            /* // 判断状态是否正确
+        var s = [];
+        for (var i = 0; i < results.getCurrentNumPois(); i ++){
+            s.push(results.getPoi(i).title + ", lat:" + results.getPoi(i).point.lat+ ", lat:" + results.getPoi(i).point.lng);
+        }
+        document.getElementById("r-result").innerHTML = s.join("<br/>"); */
+        }
+    });
+    
+</script>
